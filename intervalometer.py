@@ -12,6 +12,8 @@ hopefully result in smoother motion in timelapse films.)
 import time
 # Import subprocess to relay commands to camera
 import subprocess
+# Import fractions to interpret camera shutter speed data
+import fractions
 
 ### Setup Functions ###
 def setDelay():
@@ -38,6 +40,64 @@ def setFps():
 def trigger_camera():
     subprocess.run(["gphoto2", "--trigger-capture"], check=True)
 
+def get_shutter_speed(default=1.0):
+    """
+    Queries the Nikon Z7 via gphoto2 and returns the current shutter speed in seconds.
+    - Defaults to `default` (1 second) for exposures shorter than that.
+    - Only updates if camera reports a longer exposure.
+    """
+    try:
+        # Call gphoto2 to get the shutter speed
+        result = subprocess.run(
+            ["gphoto2", "--get-config", "shutterspeed"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+
+        # Parse the "Current:" line
+        for line in result.stdout.splitlines():
+            if line.startswith("Current:"):
+                speed_str = line.split("Current:")[1].strip()
+                
+                # Convert fraction or number to float
+                try:
+                    exposure_sec = float(fractions.Fraction(speed_str))
+                except ValueError:
+                    exposure_sec = float(speed_str)
+                
+                # Apply conditional logic
+                if exposure_sec > default:
+                    return exposure_sec
+                else:
+                    return default
+
+        # Fallback if Current not found
+        print("Warning: Could not find current shutter speed, using default 1 sec.")
+        return default
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error reading shutter speed: {e.stderr}")
+        return default
+
+def runSequence(delay, exp, interval, num):
+    '''Runs the sequence.'''
+    print(f"\nWaiting {delay} seconds before starting...")
+    time.sleep(delay)
+
+    for i in range(1, num + 1):
+        print(f"Shot {i+1}: Exposure = {exp:.1f} seconds.")
+        print(f"Capturing shot {i}/{num}...")
+        # Trigger the shutter
+        trigger_camera()
+        # Wait for exposure to finish
+        time.sleep(exp)
+        # Interval
+        if i != num: 
+            time.sleep(interval)
+    print("\nSequence complete!")
+
 ### Calculations ###
 def calcClipTime(numShots, fps):
     '''Calculates the total length of the final timelapse sequence.'''
@@ -49,25 +109,10 @@ def calcTotTime(delay, exp, intvl, numShots):
     an endtime based on the current time.'''
     return delay + numShots * (exp + intvl)
 
-def runSequence(delay, exp, interval, num):
-    '''Runs the sequence.'''
-    print(f"\nWaiting {delay} seconds before starting...")
-    time.sleep(delay)
-
-    for i in range(1, num + 1):
-        print(f"Capturing shot {i}/{num}...")
-        # Trigger the shutter
-        trigger_camera()
-        # Wait for exposure to finish
-        time.sleep(exp)
-        # Interval
-        if i != num: 
-            time.sleep(interval)
-    print("\nSequence complete!")
 
 if __name__ == "__main__":
     delay = setDelay()
-    exp = setExposure()
+    exp = get_shutter_speed(default=1.0)
     interval = setInterval()
     num = setNumShots()
     fps = setFps()
