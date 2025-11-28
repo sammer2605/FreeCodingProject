@@ -63,7 +63,7 @@ def runSequence(delay, exp, interval, num):
         # Interval
         if i != num: 
             time.sleep(interval)
-        print("\nSequence complete!")
+    print("\nSequence complete!")
 
 if __name__ == "__main__":
     delay = setDelay()
