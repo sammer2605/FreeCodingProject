@@ -44,10 +44,9 @@ def get_shutter_speed(default=1.0):
     """
     Queries the Nikon Z7 via gphoto2 and returns the current shutter speed in seconds.
     - Defaults to `default` (1 second) for exposures shorter than that.
-    - Only updates if camera reports a longer exposure.
+    - Handles fractions, decimals, or values with 's' suffix.
     """
     try:
-        # Call gphoto2 to get the shutter speed
         result = subprocess.run(
             ["gphoto2", "--get-config", "shutterspeed"],
             stdout=subprocess.PIPE,
@@ -56,22 +55,22 @@ def get_shutter_speed(default=1.0):
             check=True
         )
 
-        # Parse the "Current:" line
         for line in result.stdout.splitlines():
             if line.startswith("Current:"):
                 speed_str = line.split("Current:")[1].strip()
-                
-                # Convert fraction or number to float
+
+                # Remove trailing 's' if present
+                if speed_str.endswith('s'):
+                    speed_str = speed_str[:-1]
+
+                # Convert to float
                 try:
                     exposure_sec = float(fractions.Fraction(speed_str))
                 except ValueError:
                     exposure_sec = float(speed_str)
-                
-                # Apply conditional logic
-                if exposure_sec > default:
-                    return exposure_sec
-                else:
-                    return default
+
+                # Use the actual exposure only if it's above default
+                return exposure_sec if exposure_sec > default else default
 
         # Fallback if Current not found
         print("Warning: Could not find current shutter speed, using default 1 sec.")
@@ -80,7 +79,6 @@ def get_shutter_speed(default=1.0):
     except subprocess.CalledProcessError as e:
         print(f"Error reading shutter speed: {e.stderr}")
         return default
-
 def runSequence(delay, exp, interval, num):
     '''Runs the sequence.'''
     print(f"\nWaiting {delay} seconds before starting...")
