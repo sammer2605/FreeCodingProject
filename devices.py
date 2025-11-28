@@ -50,20 +50,20 @@ class Intervalometer:
             print(f"Error reading shutter speed: {e.stderr}")
             return self.default_exposure
         
-        def trigger_shutter(self):
-            """Trigger the camera shutter."""
-            try:
-                subprocess.run(["gphoto2", "--trigger-capture"], check=True)
-            except subprocess.CalledProcessError as e:
-                print(f"Error triggering shutter: {e.stderr}")
+    def trigger_shutter(self):
+        """Trigger the camera shutter."""
+        try:
+            subprocess.run(["gphoto2", "--trigger-capture"], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error triggering shutter: {e.stderr}")
         
-        # Main Interval Sequence
-        def run_sequence(self):
-            """Run the intervalometer sequence."""
-            for i in range(self.num_shots):
-                exposure = self.get_shutter_speed()
-                print(f"Shot {i+1}/{self.num_shots}: Exposure = {exposure:.1f} sec")
-                self.trigger_shutter()
-                time.sleep(exposure) # Wait for exposure to finish
-                if i != self.num_shots - 1:
-                    time.sleep(self.interval)
+    # Main Interval Sequence
+    def run_sequence(self):
+        """Run the intervalometer sequence."""
+        for i in range(self.num_shots):
+            exposure = self.get_shutter_speed()
+            print(f"Shot {i+1}/{self.num_shots}: Exposure = {exposure:.1f} sec")
+            self.trigger_shutter()
+            time.sleep(exposure) # Wait for exposure to finish
+            if i != self.num_shots - 1:
+                time.sleep(self.interval)
