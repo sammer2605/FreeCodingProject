@@ -79,6 +79,7 @@ def get_shutter_speed(default=1.0):
     except subprocess.CalledProcessError as e:
         print(f"Error reading shutter speed: {e.stderr}")
         return default
+
 def runSequence(delay, exp, interval, num):
     '''Runs the sequence.'''
     print(f"\nWaiting {delay} seconds before starting...")
