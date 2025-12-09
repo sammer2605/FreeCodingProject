@@ -126,7 +126,7 @@ class MotionTimelapse:
 
 
     # Automatically calculate feed_rate to fit interval
-    def run(self, base_feed_rate=500):  # default high feed
+    def run(self, base_feed_rate=350):  # default high feed
         for i in range(self.num_shots):
             exposure = self.intervalometer.get_shutter_speed()
             self.intervalometer.trigger_shutter()
