@@ -94,7 +94,34 @@ class GRBLSlider:
         self.ser.close()
 
 class MotionTimelapse:
-    # ... other methods ...
+    def __init__(self, num_shots, interval, default_exposure=1.0,
+                 move_mm_per_shot=10.0, slider_length_mm=134.0, slider_port="/dev/ttyACM0"):
+        self.intervalometer = Intervalometer(num_shots, interval, default_exposure)
+        self.slider = GRBLSlider(port=slider_port)
+        self.num_shots = num_shots
+        self.slider_length_mm = slider_length_mm
+        self.current_position = 0.0  # start at beginning
+
+        # Adjust move length if needed
+        max_possible_moves = slider_length_mm / move_mm_per_shot
+        if num_shots - 1 > max_possible_moves:
+            self.move_mm_per_shot = slider_length_mm / (num_shots - 1)
+            print(f"Adjusted move per shot to {self.move_mm_per_shot:.2f} mm to fit slider length")
+        else:
+            self.move_mm_per_shot = move_mm_per_shot
+
+    def move_slider_safe(self, distance_mm, feed_rate=100):
+        remaining_space = self.slider_length_mm - self.current_position
+        if distance_mm > remaining_space:
+            distance_mm = remaining_space
+        elif distance_mm < -self.current_position:
+            distance_mm = -self.current_position
+
+        if distance_mm != 0:
+            self.slider.move_mm(distance_mm, feed_rate)
+            self.current_position += distance_mm
+        else:
+            print("Reached slider limit, not moving.")
 
     def run(self, feed_rate=None):
         """Run the timelapse sequence."""
@@ -106,7 +133,6 @@ class MotionTimelapse:
             if i != self.num_shots - 1:
                 # calculate feed rate if not provided
                 if feed_rate is None:
-                    # make sure move finishes within remaining interval
                     remaining_interval = max(0.01, self.intervalometer.interval - exposure)
                     feed_rate_calc = (self.move_mm_per_shot / remaining_interval) * 60  # mm/min
                 else:
@@ -116,6 +142,9 @@ class MotionTimelapse:
                 self.move_slider_safe(self.move_mm_per_shot, feed_rate_calc)
 
                 time.sleep(max(0, self.intervalometer.interval - exposure))
+
+    def close(self):
+        self.slider.close()
 
 # if __name__ == "__main__":
 #     num_shots = int(input("Please input your desired number of exposures: "))
