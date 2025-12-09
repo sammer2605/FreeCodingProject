@@ -92,37 +92,77 @@ class GRBLSlider:
         self.ser.close()
 
 class MotionTimelapse:
-    """Runs a motion-controlled timelapse sequence."""
     def __init__(self, num_shots, interval, default_exposure=1.0,
-                 move_mm_per_shot=0.25, slider_port="/dev/ttyACM0"):
+                 move_mm_per_shot=10.0, slider_length_mm=134.0, slider_port="/dev/ttyACM0"):
         self.intervalometer = Intervalometer(num_shots, interval, default_exposure)
         self.slider = GRBLSlider(port=slider_port)
-        self.move_mm_per_shot = move_mm_per_shot
         self.num_shots = num_shots
+        self.slider_length_mm = slider_length_mm
+        self.current_position = 0.0  # start at beginning
+
+        # Adjust move length if needed
+        max_possible_moves = slider_length_mm / move_mm_per_shot
+        if num_shots - 1 > max_possible_moves:
+            self.move_mm_per_shot = slider_length_mm / (num_shots - 1)
+            print(f"Adjusted move per shot to {self.move_mm_per_shot:.2f} mm to fit slider length")
+        else:
+            self.move_mm_per_shot = move_mm_per_shot
+
+    def move_slider_safe(self, distance_mm, feed_rate=100):
+        next_position = self.current_position + distance_mm
+        if next_position < 0:
+            distance_mm = -self.current_position
+        elif next_position > self.slider_length_mm:
+            distance_mm = self.slider_length_mm - self.current_position
+
+        if distance_mm != 0:
+            self.slider.move_mm(distance_mm, feed_rate)
+            self.current_position += distance_mm
+        else:
+            print("Reached slider limit, not moving.")
 
     def run(self, feed_rate=100):
-        """Run the full timelapse sequence."""
         for i in range(self.num_shots):
             exposure = self.intervalometer.get_shutter_speed()
             print(f"Shot {i+1}/{self.num_shots} | Exposure: {exposure:.3f}s")
             self.intervalometer.trigger_shutter()
             time.sleep(exposure)
             if i != self.num_shots - 1:
-                print(f"Moving slider {self.move_mm_per_shot} mm")
-                self.slider.move_mm(self.move_mm_per_shot, feed_rate)
+                print(f"Moving slider {self.move_mm_per_shot:.2f} mm")
+                self.move_slider_safe(self.move_mm_per_shot, feed_rate)
                 time.sleep(max(0, self.intervalometer.interval - exposure))
 
     def close(self):
         self.slider.close()
 
-# Example usage
-if __name__ == "__main__":
-    num_shots = 10
-    interval = 5  # seconds between shots
-    move_mm_per_shot = 0.25  # 100 steps equivalent in mm
-    feed_rate = 100  # mm/min
+# if __name__ == "__main__":
+#     num_shots = int(input("Please input your desired number of exposures: "))
+#     interval = 5  # seconds between shots
+#     move_mm_per_shot = 0.25  # 100 steps equivalent in mm
+#     feed_rate = 100  # mm/min
 
-    timelapse = MotionTimelapse(num_shots, interval, move_mm_per_shot=move_mm_per_shot)
+#     timelapse = MotionTimelapse(num_shots, interval, move_mm_per_shot=move_mm_per_shot)
+#     try:
+#         timelapse.run(feed_rate=feed_rate)
+#     finally:
+#         timelapse.close()
+
+if __name__ == "__main__":
+    # User input
+    num_shots = int(input("Enter number of shots: "))
+    interval = float(input("Enter interval between shots (seconds): "))
+    move_mm_per_shot_guess = 10.0  # initial guess, will be adjusted if needed
+    slider_length_mm = 134.0       # total slider travel
+    feed_rate = 100                # mm/min
+
+    # Initialize and run timelapse
+    timelapse = MotionTimelapse(
+        num_shots=num_shots,
+        interval=interval,
+        move_mm_per_shot=move_mm_per_shot_guess,
+        slider_length_mm=slider_length_mm
+    )
+
     try:
         timelapse.run(feed_rate=feed_rate)
     finally:
