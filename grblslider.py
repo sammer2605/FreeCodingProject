@@ -112,8 +112,8 @@ class MotionTimelapse:
 
 # Example usage
 if __name__ == "__main__":
-    num_shots = 10
-    interval = 5  # seconds between shots
+    num_shots = int(input("Please enter the desired number of exposures: "))
+    interval = float(input("Please enter the interval period: "))  # seconds between shots
     move_mm_per_shot = 0.25  # 100 steps equivalent in mm
     feed_rate = 100  # mm/min
 
