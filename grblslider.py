@@ -57,8 +57,10 @@ class GRBLSlider:
     """Controls a GRBL-based slider in millimeters, with debug output."""
     def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=2):
         self.ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
-        time.sleep(2)  # wait for Arduino to reset
+        time.sleep(2)
         self._flush_startup()
+        self._send_command("G91")  # set relative mode once
+
 
     def _flush_startup(self):
         while self.ser.in_waiting:
@@ -109,17 +111,19 @@ class MotionTimelapse:
             self.move_mm_per_shot = move_mm_per_shot
 
     def move_slider_safe(self, distance_mm, feed_rate=100):
-        next_position = self.current_position + distance_mm
-        if next_position < 0:
+        # Calculate actual move without exceeding slider length
+        remaining_space = self.slider_length_mm - self.current_position
+        if distance_mm > remaining_space:
+            distance_mm = remaining_space
+        elif distance_mm < -self.current_position:
             distance_mm = -self.current_position
-        elif next_position > self.slider_length_mm:
-            distance_mm = self.slider_length_mm - self.current_position
 
         if distance_mm != 0:
             self.slider.move_mm(distance_mm, feed_rate)
             self.current_position += distance_mm
         else:
             print("Reached slider limit, not moving.")
+
 
     def run(self, feed_rate=100):
         for i in range(self.num_shots):
