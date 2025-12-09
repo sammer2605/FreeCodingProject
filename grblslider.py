@@ -54,7 +54,7 @@ class Intervalometer:
             print(f"Error triggering shutter: {e.stderr}")
 
 class GRBLSlider:
-    """Controls a GRBL-based slider in millimeters."""
+    """Controls a GRBL-based slider in millimeters, with debug output."""
     def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=2):
         self.ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         time.sleep(2)  # wait for Arduino to reset
@@ -62,13 +62,18 @@ class GRBLSlider:
 
     def _flush_startup(self):
         while self.ser.in_waiting:
-            self.ser.readline()
+            line = self.ser.readline().decode().strip()
+            if line:
+                print(f"GRBL startup: {line}")
 
     def _send_command(self, command):
+        """Send a G-Code command and print all responses from GRBL."""
+        print(f">>> Sending: {command}")
         self.ser.write((command + '\n').encode())
         while True:
             line = self.ser.readline().decode().strip()
             if line:
+                print(f"GRBL: {line}")
                 if 'ok' in line.lower():
                     break
                 elif 'error' in line.lower():
