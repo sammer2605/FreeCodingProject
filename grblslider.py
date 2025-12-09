@@ -125,16 +125,22 @@ class MotionTimelapse:
             print("Reached slider limit, not moving.")
 
 
-    def run(self, feed_rate=100):
+    # Automatically calculate feed_rate to fit interval
+    def run(self, base_feed_rate=500):  # default high feed
         for i in range(self.num_shots):
             exposure = self.intervalometer.get_shutter_speed()
-            print(f"Shot {i+1}/{self.num_shots} | Exposure: {exposure:.3f}s")
             self.intervalometer.trigger_shutter()
-            time.sleep(exposure)
+            
+            # Calculate required feed rate for move to finish before next shot
+            remaining_interval = max(0.01, self.intervalometer.interval - exposure)
+            distance = self.move_mm_per_shot
+            feed_rate = (distance / remaining_interval) * 60  # mm/min
+            print(f"Shot {i+1}: moving {distance:.2f} mm at feed {feed_rate:.1f} mm/min")
+            
             if i != self.num_shots - 1:
-                print(f"Moving slider {self.move_mm_per_shot:.2f} mm")
-                self.move_slider_safe(self.move_mm_per_shot, feed_rate)
-                time.sleep(max(0, self.intervalometer.interval - exposure))
+                self.move_slider_safe(distance, feed_rate)
+                time.sleep(max(0, remaining_interval))
+
 
     def close(self):
         self.slider.close()
