@@ -54,7 +54,7 @@ class Intervalometer:
             print(f"Error triggering shutter: {e.stderr}")
 
 class GRBLSlider:
-    """Controls a GRBL-based slider in millimeters."""
+    """Controls the GRBL-based slider in millimeters."""
     def __init__(self, port="/dev/ttyACM0", baudrate=115200, timeout=2):
         self.ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         time.sleep(2)  # wait for Arduino to reset
@@ -79,15 +79,15 @@ class GRBLSlider:
         self._send_command("G91")  # relative positioning
         self._send_command(f"G1 X{distance_mm} F{feed_rate}")
 
-    def home(self):
-        """Home slider if limit switches installed."""
-        self._send_command("$H")
+    # def home(self):
+    #     """Set slider to home position when limit switches are installed."""
+    #     self._send_command("$H")
 
     def close(self):
         self.ser.close()
 
 class MotionTimelapse:
-    """Runs a motion-controlled timelapse sequence."""
+    """Runs the timelapse sequence."""
     def __init__(self, num_shots, interval, default_exposure=1.0,
                  move_mm_per_shot=0.25, slider_port="/dev/ttyACM0"):
         self.intervalometer = Intervalometer(num_shots, interval, default_exposure)
